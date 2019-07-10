@@ -6,8 +6,10 @@ __pycache__/
 *.zip
 *.csv
 *.swp
+*.sqlite
 
 */.DS_Store
 .DS_Store
 */.idea/
 .idea/
+saved_png

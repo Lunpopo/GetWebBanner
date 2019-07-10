@@ -22,6 +22,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
 }
 DATABASE_FILE = "{}{}".format(ROOT_PATH, 'get_web_banner.sqlite')
+SPACER = "+" + "-" * 30 + "+"
 
 
 class ColorFormatter(object):
@@ -72,9 +73,8 @@ def send_request(cursor, target_url, verbose=False):
             sql = "INSERT INTO cached_online_url (url) VALUES ('{}')".format(target_url)
             cursor.execute(sql)
 
-            string = "{} {}, url 为: {}".format(
-                colored('#', 'white'),
-                colored("命中成功", 'green'),
+            string = "{}, url 为: {}".format(
+                "命中成功",
                 colored(target_url, 'magenta')
             )
             ColorFormatter(string).success()
@@ -116,8 +116,7 @@ def send_request(cursor, target_url, verbose=False):
                 ColorFormatter(string).success()
         else:
             if verbose:
-                string = "{} {}, {} status code 为: {}".format(
-                    colored('#', 'white'),
+                string = "{}, {} status code 为: {}".format(
                     "命中成功",
                     target_url,
                     response.status_code
@@ -127,8 +126,7 @@ def send_request(cursor, target_url, verbose=False):
 
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.TooManyRedirects):
         if verbose:
-            string = "{} {}, url 为: {}".format(
-                colored('#', 'white'),
+            string = "{}, url 为: {}".format(
                 "命中失败",
                 target_url
             )
@@ -136,8 +134,7 @@ def send_request(cursor, target_url, verbose=False):
 
     except sqlite3.OperationalError as e:
         if verbose:
-            string = "{} {}, url 为: {}".format(
-                colored('#', 'white'),
+            string = "{}, url 为: {}".format(
                 "命中失败",
                 target_url
             )
@@ -147,8 +144,7 @@ def send_request(cursor, target_url, verbose=False):
 
     except sqlite3.ProgrammingError as e:
         if verbose:
-            string = "{} {}, url 为: {}".format(
-                colored('#', 'white'),
+            string = "{}, url 为: {}".format(
                 "命中失败",
                 target_url
             )
@@ -156,18 +152,35 @@ def send_request(cursor, target_url, verbose=False):
             ColorFormatter(e).error()
 
 
-def init_database():
-    # 初始化数据库
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.execute(
-        'CREATE TABLE IF NOT EXISTS "cached_online_url" ('
-        '`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,'
-        '`url` TEXT NOT NULL'
-        ')'
-    )
-    conn = sqlite3.connect(DATABASE_FILE, isolation_level=None, check_same_thread=False, timeout=20)
-    cursor = conn.cursor()
-    return cursor
+class Database(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def init_database():
+        # 初始化数据库
+        if os.path.exists(DATABASE_FILE):
+            try:
+                os.makedirs(DATABASE_FILE)
+            except:
+                pass
+
+        conn = sqlite3.connect(DATABASE_FILE)
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS "cached_online_url" ('
+            '`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,'
+            '`url` TEXT NOT NULL'
+            ')'
+        )
+        conn = sqlite3.connect(DATABASE_FILE, isolation_level=None, check_same_thread=False, timeout=20)
+        cursor = conn.cursor()
+        return cursor
+
+    def show_cached_url(self):
+        cursor = self.init_database()
+        sql = 'select * from cached_online_url'
+        online_urls = cursor.execute(sql).fetchall()
+        return online_urls
 
 
 def main():
@@ -185,8 +198,48 @@ def main():
 
     else:
         try:
+            # 初始化 database object
+            database = Database()
+
+            if opts.show_urls:
+                cached_urls = database.show_cached_url()
+
+                if cached_urls:
+                    ColorFormatter('Show all of the cached urls from database in below').info()
+
+                    print colored(SPACER, 'white')
+                    for i, url in enumerate(cached_urls):
+                        # 计算长度的
+                        origin_string = "{}{}{}{}".format(
+                            '| ',
+                            "#" + str(i) + " ",
+                            '| ',
+                            url[1]
+                        )
+                        # 这个是要输出的 字符串
+                        string = "{}{}{}{}".format(
+                            colored('| ', 'white'),
+                            colored("#" + str(i) + " ", 'white'),
+                            colored('| ', 'white'),
+                            url[1]
+                        )
+
+                        space = ' '
+                        string += space * (32 - len(origin_string.strip()) - 1) + colored('|', 'white')
+                        print string
+
+                    print colored(SPACER, 'white')
+                else:
+                    string = 'No cached url from database, please return script and {} {}'.format(
+                        colored('type -c INT option', 'white'),
+                        colored('to find out HTTP server who used to', 'red')
+                    )
+                    ColorFormatter(string).fatal()
+
+                sys.exit(0)
+
             if opts.section:
-                cursor = init_database()
+                cursor = database.init_database()
 
                 # 多线程批量打
                 for i in range(1, 255):
@@ -220,6 +273,11 @@ class CmdLineParser(ArgumentParser):
         verbose_arg = parser.add_argument_group("verbose arguments",
                                                 "whether turn on verbose mode to output more details info")
         verbose_arg.add_argument("-v", "--verbose", action='store_true', dest="verbose", help="toggle verbose mode")
+
+        database = parser.add_argument_group("database arguments",
+                                             "whether turn on verbose mode to output more details info")
+        database.add_argument("-s", "--show-urls", action='store_true', dest="show_urls",
+                              help="show all cached urls in database")
 
         opts = parser.parse_args()
 
