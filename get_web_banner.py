@@ -96,6 +96,14 @@ def send_request(cursor, target_url, verbose=False):
             driver.get(target_url)
             # 最好添加 time.sleep() 避免图片还没下载完, 主程序就退出了
             time.sleep(10)
+
+            # 检查是否有 saved_png 文件夹
+            if not os.path.exists(PNG_PATH):
+                try:
+                    os.makedirs(PNG_PATH)
+                except:
+                    pass
+
             png_name = "{}{}".format(ROOT_PATH + 'saved_png/', target_url.split('://')[1] + '.png')
             result = driver.get_screenshot_as_file(png_name)
 
