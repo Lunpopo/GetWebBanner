@@ -30,28 +30,28 @@ class ColorFormatter(object):
         self.str = string_in
 
     def fatal(self):
-        print colored(self.str, 'red')
+        sys.stdout.write(colored(self.str, 'red') + '\r\n')
 
     def error(self):
-        print "[{}] [{}] {}".format(
+        sys.stdout.write("[{}] [{}] {}\r\n".format(
             colored(time.strftime("%H:%M:%S"), 'cyan'),
             colored("ERROR", 'red'),
             self.str
-        )
+        ))
 
     def success(self):
-        print "[{}] [{}] {}".format(
+        sys.stdout.write("[{}] [{}] {}\r\n".format(
             colored(time.strftime("%H:%M:%S"), 'cyan'),
             colored("SUCCESS", 'green'),
             self.str
-        )
+        ))
 
     def info(self):
-        print "[{}] [{}] {}".format(
+        sys.stdout.write("[{}] [{}] {}\r\n".format(
             colored(time.strftime("%H:%M:%S"), 'cyan'),
             colored("INFO", 'white'),
             self.str
-        )
+        ))
 
 
 def banner():
@@ -104,7 +104,7 @@ def send_request(cursor, target_url, verbose=False):
                 except:
                     pass
 
-            png_name = "{}{}".format(ROOT_PATH + 'saved_png/', target_url.split('://')[1] + '.png')
+            png_name = "{}.{}".format(target_url.split('://')[1], 'png')
             result = driver.get_screenshot_as_file(png_name)
 
             if result:
