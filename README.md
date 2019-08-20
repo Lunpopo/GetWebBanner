@@ -28,6 +28,22 @@ This script aim to find out website who using HTTP server and take screenshot to
 
 	clean the database data, the Geckodriver redundant log file and saved screenshot files.
 
+## Installation
+### Python2
+```
+git clone https://github.com/Lunpopo/GetWebBanner.git
+cd GetWebBanner
+pip2 install -r requirement.txt
+python2 get_web_banner.py -h
+```
+### Python3
+```
+git clone https://github.com/Lunpopo/GetWebBanner.git
+cd GetWebBanner
+pip3 install -r requirement.txt
+python3 get_web_banner.py -h
+```
+
 ## Usage and Argument options
 ```
 usage: get_web_banner.py [-h] [-c INT] [-u TARGET-URL [TARGET-URL ...]]
@@ -67,6 +83,19 @@ Database module:
   --clean               clean the database cache, the Geckodriver redundant
                         log file and saved screenshot files
 ```
+
+## Example
+* python get_web_banner.py -c 1, this option best use in internal website
+	
+	![example-01.png](example/images/example-01.png)
+
+* python get_web_banner.py -u 192.168.1.62, request the url you gave and take screenshot
+	
+	![example-01.png](example/images/example-02.png)
+
+* python get_web_banner.py -i urls.txt, request dozen urls you gave and take screenshot
+	
+	![example-01.png](example/images/example-03.png)
 
 ## Author
 [Lunpopo](https://github.com/Lunpopo/get_web_banner)

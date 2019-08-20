@@ -72,6 +72,8 @@ def banner():
     | | |_ |/ _ \ __\ \/  \/ / _ \ '_ \|  _ < / _` | '_ \| '_ \ / _ \ '__|
     | |__| |  __/ |_ \  /\  /  __/ |_) | |_) | (_| | | | | | | |  __/ |
      \_____|\___|\__| \/  \/ \___|_.__/|____/ \__,_|_| |_|_| |_|\___|_|
+                                
+                                                        --Author: Lunpopo
     """, 'cyan'))
 
 
@@ -333,6 +335,7 @@ def main():
 
             if opts.section:
                 # 多线程批量打
+                ColorFormatter('Task start').info()
                 executor = ThreadPoolExecutor(max_workers=opts.thread_number)
                 urls = [section_url.format(opts.section, i) for i in range(1, 255)]
 
@@ -347,6 +350,7 @@ def main():
 
             if opts.target_url:
                 # 单个的 url 还是使用多线程, 不使用线程池, 毕竟创建线程池也要耗费资源
+                ColorFormatter('Task start').info()
                 request_obj = Request()
                 thread_list = []
                 for url in opts.target_url:
@@ -373,6 +377,7 @@ def main():
                     url_list = r.readlines()
 
                 # 多线程批量打
+                ColorFormatter('Task start').info()
                 executor = ThreadPoolExecutor(max_workers=opts.thread_number)
                 urls = [url.strip().decode('utf8') for url in url_list]
 
@@ -396,6 +401,7 @@ def main():
                 sys.exit(0)
 
             if opts.clean_data:
+                ColorFormatter('Start Clean Cache').info()
                 if os.path.exists(PNG_PATH):
                     subprocess.Popen("cd {} && {}".format(PNG_PATH, 'rm -rf *'), stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE, shell=True)
@@ -404,7 +410,7 @@ def main():
                         w.write("")
                 # 清除数据库数据
                 Database().clean_database()
-                ColorFormatter('Clean Done!').fatal()
+                ColorFormatter('Clean Done!').success()
 
         except KeyboardInterrupt:
             ColorFormatter("User Abort Scanning").fatal()

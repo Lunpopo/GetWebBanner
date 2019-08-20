@@ -7,15 +7,10 @@ __pycache__/
 *.csv
 *.swp
 *.sqlite
-*.jpg
-*.png
-*.gif
-*.JPG
-*.PNG
-*.GIF
 
 */.DS_Store
 .DS_Store
 */.idea/
 .idea/
+
 saved_png
