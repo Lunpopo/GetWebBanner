@@ -87,15 +87,15 @@ Database module:
 ## Example
 * python get_web_banner.py -c 1, this option best use in internal website
 	
-	![example-01.png](example/images/example-01.png)
+	![example-01.png](example/images/example-01.jpg)
 
 * python get_web_banner.py -u 192.168.1.62, request the url you gave and take screenshot
 	
-	![example-01.png](example/images/example-02.png)
+	![example-01.png](example/images/example-02.jpg)
 
 * python get_web_banner.py -i urls.txt, request dozen urls you gave and take screenshot
 	
-	![example-01.png](example/images/example-03.png)
+	![example-01.png](example/images/example-03.jpg)
 
 ## Author
 [Lunpopo](https://github.com/Lunpopo/get_web_banner)
