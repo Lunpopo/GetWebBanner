@@ -4,20 +4,40 @@ This is GetWebBanner script, a very small and simple tool to take screenshot whe
 This script aim to find out website who using HTTP server and take screenshot to save.
 
 ## Feature
-1. It can scan an dozen ip address when you specific -s or --section option.
+1. It can scan an dozen ip address when you specific -s or --section option from internal network framework.
 
-	for example: Typing a C section ip 192.168.2.0/24. This mean that -c or --section option is 2
+	for example: python get_web_banner -c 2, input a C section ip 192.168.2.0/24. 
+	
+	This mean that -c or --section option is 2
 
 2. Support thread to scan target network.
+	
+	just type -t or --thread option simple
 
-## Usage And Argument options
-usage: ./get_web_banner.py [-h] [-c INT] [-v]
+3. Support file input
 
+	scan dozen ip address from file, just simple type -i or --input-file option
+
+4. Database support
+
+	The script can record that has been scanned url in sqlit3 database.
+
+	Just simple type -s or --show-url option and it will show the database data for  you.
+
+5. Cleaning up the cache
+
+	clean the database data, the Geckodriver redundant log file and saved screenshot files.
+
+## Usage and Argument options
 ```
+usage: get_web_banner.py [-h] [-c INT] [-u TARGET-URL [TARGET-URL ...]]
+                         [-i URL-LIST-FILE] [-t INT] [--ssl] [-v] [-s]
+                         [--clean]
+
 helper arguments:
   -h, --help            show this help message and exit
 
-mandatory arguments:
+Mandatory module:
   arguments that have to be passed for the program to run
 
   -c INT, --section INT
@@ -25,11 +45,27 @@ mandatory arguments:
                         option to point ip address section, for example:
                         192.168.2.0/24. This mean that -c or --section option
                         is 2
+  -u TARGET-URL [TARGET-URL ...], --url TARGET-URL [TARGET-URL ...]
+                        input target url you want to get screenshot, support
+                        input multi urls
+  -i URL-LIST-FILE, --input-file URL-LIST-FILE
+                        take the file that contain all of urls you want to
+                        scan into here, you can get a list of screenshot with
+                        those urls
 
-verbose arguments:
+Options module:
+  set up parameter to control request
+
+  -t INT, --thread INT  set up threads of number, default is 200 count
+  --ssl                 toggle ssl for request
+  -v, --verbose         toggle verbose mode
+
+Database module:
   whether turn on verbose mode to output more details info
 
-  -v, --verbose         toggle verbose mode
+  -s, --show-urls       show all cached urls in database
+  --clean               clean the database cache, the Geckodriver redundant
+                        log file and saved screenshot files
 ```
 
 ## Author
