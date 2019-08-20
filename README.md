@@ -1,4 +1,4 @@
-# get_web_banner
+# GetWebBanner
 This is GetWebBanner script, a very small and simple tool to take screenshot when scanning target network.
 
 This script aim to find out website who using HTTP server and take screenshot to save.
