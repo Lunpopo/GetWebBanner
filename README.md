@@ -1,5 +1,5 @@
 # GetWebBanner
-This is GetWebBanner script, a very small and simple tool to take screenshot when scanning target network.
+GetWebBanner is a very small and simple tool to take screenshot when scanning target network.
 
 This script aim to find out website who using HTTP server and take screenshot to save.
 
@@ -8,21 +8,21 @@ This script aim to find out website who using HTTP server and take screenshot to
 
 	for example: python get_web_banner -c 2, input a C section ip 192.168.2.0/24. 
 	
-	This mean that -c or --section option is 2
+	this mean that -c or --section option is 2.
 
 2. Support thread to scan target network.
 	
-	just type -t or --thread option simple
+	just type -t or --thread option simple.
 
 3. Support file input
 
-	scan dozen ip address from file, just simple type -i or --input-file option
+	scan dozen ip address from file, just simple type -i or --input-file option.
 
 4. Database support
 
-	The script can record that has been scanned url in sqlit3 database.
+	the script can record that has been scanned url in sqlit3 database.
 
-	Just simple type -s or --show-url option and it will show the database data for  you.
+	just simple type -s or --show-url option and it will show the database data for  you.
 
 5. Cleaning up the cache
 
