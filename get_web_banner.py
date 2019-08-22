@@ -175,7 +175,7 @@ class Request(object):
                 except:
                     pass
 
-            png_name = "{}.{}".format(target_url.split('://')[1], 'png')
+            png_name = "{}.png".format(urlparse(target_url).netloc)
             save_png_path = os.path.join(pic_path, png_name)
             result = driver.get_screenshot_as_file(save_png_path)
 
@@ -217,7 +217,7 @@ class Request(object):
             except:
                 pass
 
-        png_name = "{}.{}".format(target_url.split('://')[1], 'png')
+        png_name = "{}.png".format(urlparse(target_url).netloc)
         save_png_path = os.path.join(pic_path, png_name)
         result = driver.get_screenshot_as_file(save_png_path)
 
