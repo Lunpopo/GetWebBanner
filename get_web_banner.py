@@ -16,16 +16,24 @@ try:
 except:
     from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
+import json
 
 
 ROOT_PATH = os.getcwd()
 PNG_PATH = os.path.join(ROOT_PATH, 'saved_png')
 GECKODRIVER_LOG_FILE = os.path.join(ROOT_PATH, 'geckodriver.log')
 HEADERS = {
-    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
+    'Connection': 'close',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+    'Sec-Fetch-Site': 'none',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7'
 }
 DATABASE_FILE = os.path.join(ROOT_PATH, 'GetWebBanner.sqlite')
-SPACER = "+" + "-" * 30 + "+"
 
 
 class ColorFormatter(object):
@@ -93,10 +101,19 @@ class Request(object):
         else:
             return url
 
-    def send_request(self, target_url, verbose=False, ssl=False):
+    def send_request(self, target_url, proxy=None, verbose=False, ssl=False):
         try:
             target_url = self.normalization_url(url=target_url, ssl=ssl)
-            response = requests.get(target_url, headers=HEADERS, timeout=5)
+
+            if ssl:
+                import ssl
+                ssl._create_default_https_context = ssl._create_unverified_context
+                # python3 关闭启用verify=False之后的警告信息
+                requests.packages.urllib3.disable_warnings()
+                response = requests.get(target_url, headers=HEADERS, proxies=proxy, timeout=5,
+                                        verify=False)
+            else:
+                response = requests.get(target_url, headers=HEADERS, proxies=proxy, timeout=5)
 
             if not str(response.status_code).startswith('4'):
                 Database().insert_data('cached_online_url', target_url)
@@ -165,6 +182,24 @@ class Request(object):
             driver = webdriver.Firefox(executable_path=driver_path, options=option)
 
             driver.get(target_url)
+            if urlparse(target_url).netloc == "blog.csdn.net":
+                # 如果是 CSDN 的网站，会自动按下查看更多按钮，然后截图
+                driver.find_element_by_xpath("//*[@class='btn-readmore']").click()
+            k = 1
+            js_height = "return document.body.clientHeight"
+            height = driver.execute_script(js_height)
+            while True:
+                if k * 500 < height:
+                    js_move = "window.scrollTo(0,{})".format(k * 500)
+                    driver.execute_script(js_move)
+                    time.sleep(0.2)
+                    height = driver.execute_script(js_height)
+                    k += 1
+                else:
+                    break
+            scroll_width = driver.execute_script('return document.body.parentNode.scrollWidth')
+            scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
+            driver.set_window_size(scroll_width, scroll_height)
             # 最好添加 time.sleep() 避免图片还没下载完, 主程序就退出了
             time.sleep(10)
 
@@ -192,11 +227,36 @@ class Request(object):
         ColorFormatter('Task Done!').info()
 
     @staticmethod
-    def single_save_picture(target_url, pic_path=PNG_PATH):
+    def single_save_picture(target_url, proxy=None, pic_path=PNG_PATH):
+        try:
+            split_proxy = proxy['http']
+        except:
+            split_proxy = None
+
+        try:
+            protocol, ip_and_port = split_proxy.split('://')
+            ip, port = ip_and_port.split(':')
+            profile = webdriver.FirefoxProfile()
+            profile.set_preference('network.proxy.type', 1)
+            if protocol == 'http':
+                profile.set_preference('network.proxy.http', ip)
+                profile.set_preference('network.proxy.http_port', int(port))
+            elif protocol == 'https':
+                profile.set_preference('network.proxy.ssl', ip)
+                profile.set_preference('network.proxy.ssl_port', int(port))
+            elif 'socks' in protocol:
+                profile.set_preference('network.proxy.socks', ip)
+                profile.set_preference('network.proxy.socks_port', int(port))
+            profile.update_preferences()
+        except:
+            ColorFormatter('代理参数错误, 将不使用代理下载截图').info()
+            profile = None
+
         option = webdriver.FirefoxOptions()
         option.add_argument('--headless')
         # 禁用 GPU 硬件加速，防止出现bug
         option.add_argument('--disable-gpu')
+
         if platform.system() == 'Darwin':
             driver_path = os.path.join(ROOT_PATH, 'geckodriver_mac')
         elif platform.system() == 'Linux':
@@ -204,9 +264,30 @@ class Request(object):
         else:
             raise "暂时没有 Windows 的"
 
-        driver = webdriver.Firefox(executable_path=driver_path, options=option)
-
+        driver = webdriver.Firefox(executable_path=driver_path, firefox_options=option, firefox_profile=profile)
         driver.get(target_url)
+
+        if urlparse(target_url).netloc == "blog.csdn.net":
+            # 如果是 CSDN 的网站，会自动按下查看更多按钮，然后截图
+            driver.find_element_by_xpath("//*[@class='btn-readmore']").click()
+
+        k = 1
+        js_height = "return document.body.clientHeight"
+        height = driver.execute_script(js_height)
+        # print(height)
+        while True:
+            if k * 500 < height:
+                js_move = "window.scrollTo(0,{})".format(k * 500)
+                driver.execute_script(js_move)
+                time.sleep(0.2)
+                height = driver.execute_script(js_height)
+                k += 1
+            else:
+                break
+        scroll_width = driver.execute_script('return document.body.parentNode.scrollWidth')
+        scroll_height = driver.execute_script('return document.body.parentNode.scrollHeight')
+        # print(scroll_width, scroll_height)
+        driver.set_window_size(scroll_width, scroll_height)
         # 最好添加 time.sleep() 避免图片还没下载完, 主程序就退出了
         time.sleep(10)
 
@@ -277,6 +358,43 @@ class Database(object):
         return None
 
 
+def proxy_result(proxy, verbose=False):
+    """
+    传入 proxy, 返回代理是否成功
+
+    :param proxy: eg: {'http': 'socks5://127.0.0.1:1080', 'https': 'socks5://127.0.0.1:1080'}
+    :param verbose: verbose
+    :return:
+    """
+    # 这个网站会返回你的ip, 用来检测是否使用了代理
+    test_ip_url = 'http://icanhazip.com/'
+
+    try:
+        response_before = requests.get(test_ip_url, headers=HEADERS, timeout=5)
+        if verbose:
+            ColorFormatter('使用代理测试 http://icanhazip.com').info()
+            ColorFormatter(
+                "{}: {}".format("使用代理前的请求 ip 为", response_before.content.strip().decode('utf8'))
+            ).info()
+
+        time.sleep(1)
+
+        response_after = requests.get(test_ip_url, proxies=proxy, headers=HEADERS, timeout=5)
+        if verbose:
+            ColorFormatter(
+                "{}: {}".format("使用代理后的请求 ip 为", response_after.content.strip().decode('utf8'))
+            ).info()
+
+        if response_before.content.strip() != response_after.content.strip():
+            return True
+        else:
+            return False
+    except requests.exceptions.ReadTimeout:
+        return False
+    except:
+        return False
+
+
 def main():
     section_url = "http://192.168.{}.{}"
 
@@ -296,33 +414,75 @@ def main():
             database = Database()
             database.init_database()
 
+            if opts.proxy_test:
+                try:
+                    protocol, ip_and_port = opts.proxy_test.split('://')
+                except Exception as e:
+                    print('出错了')
+                    print(e)
+                    sys.exit(1)
+
+                try:
+                    ip, port = ip_and_port.split(':')
+                except Exception as e:
+                    print('出错了')
+                    print(e)
+                    sys.exit(1)
+
+                proxy = {
+                    'http': '{}://{}:{}'.format(protocol, ip, port),
+                    'https': '{}://{}:{}'.format(protocol, ip, port)
+                }
+
+                result = proxy_result(proxy=proxy, verbose=opts.verbose)
+                if result:
+                    ColorFormatter('代理使用成功').success()
+                else:
+                    ColorFormatter('代理使用失败').error()
+
+                sys.exit(0)
+
             if opts.show_urls:
                 cached_urls = database.show_cached_url()
 
                 if cached_urls:
                     ColorFormatter('Show all of the cached urls from database in below').info()
 
+                    # test code
+                    # 计算最长的数字
+                    longest_index_list = [len(str(i)) for i, url in enumerate(cached_urls)]
+                    longest_index_list.sort(reverse=True)
+                    longest_index_len = longest_index_list[0]
+
+                    longest_str_list = [len(str(url[1])) for url in cached_urls]
+                    longest_str_list.sort(reverse=True)
+                    longest_str_len = longest_str_list[0]
+                    # end code
+
+                    SPACER = "+" + "-" * (longest_index_len + longest_str_len + 6) + "+"
+                    # 抬头
                     print(colored(SPACER, 'white'))
+
                     for i, url in enumerate(cached_urls):
                         # 计算长度的
-                        origin_string = "{}{}{}{}".format(
-                            '| ',
-                            "#" + str(i) + " ",
-                            '| ',
-                            url[1]
-                        )
+                        if len(str(i)) < longest_index_len:
+                            add_index = "#" + str(i) + " "*(longest_index_len - len(str(i)) + 1)
+                        else:
+                            add_index = "#" + str(i) + " "
+
                         # 这个是要输出的 字符串
                         string = "{}{}{}{}".format(
                             colored('| ', 'white'),
-                            colored("#" + str(i) + " ", 'white'),
+                            colored(add_index, 'white'),
                             colored('| ', 'white'),
                             url[1]
                         )
 
                         space = ' '
-                        string += space * (32 - len(origin_string.strip()) - 1) + colored('|', 'white')
+                        string += space * (longest_str_len - len(url[1])) + colored(' |', 'white')
                         print(string)
 
+                    # 末尾
                     print(colored(SPACER, 'white'))
                 else:
                     string = 'No cached url from database, please return script and {} {}'.format(
@@ -338,9 +498,21 @@ def main():
                 ColorFormatter('Task start').info()
                 executor = ThreadPoolExecutor(max_workers=opts.thread_number)
                 urls = [section_url.format(opts.section, i) for i in range(1, 255)]
+                custom_proxy = opts.proxy
 
                 request_obj = Request()
-                all_task = [executor.submit(request_obj.send_request, url, opts.verbose, opts.ssl)
+
+                # 测试 proxy 是否可用
+                if custom_proxy:
+                    result = proxy_result(proxy=custom_proxy, verbose=opts.verbose)
+                    if result:
+                        ColorFormatter('代理使用成功').success()
+                    else:
+                        ColorFormatter('代理使用失败').error()
+                        ColorFormatter('仍然使用本机 ip 发送请求').info()
+                        custom_proxy = None
+
+                all_task = [executor.submit(request_obj.send_request, url, custom_proxy, opts.verbose, opts.ssl)
                             for url in urls]
                 # 等待所有的线程池中的任务完成
                 wait(all_task, return_when=ALL_COMPLETED)
@@ -353,26 +525,44 @@ def main():
                 ColorFormatter('Task start').info()
                 request_obj = Request()
                 thread_list = []
+                proxy = {
+                    'http': opts.proxy,
+                    'https': opts.proxy
+                }
+
+                if opts.proxy:
+                    result = proxy_result(proxy=proxy, verbose=opts.verbose)
+                    if result:
+                        ColorFormatter('代理使用成功').success()
+                    else:
+                        ColorFormatter('代理使用失败').error()
+                        ColorFormatter('仍然使用本机 ip 发送请求').info()
+                        proxy = None
+
                 for url in opts.target_url:
                     client_thread = threading.Thread(target=request_obj.send_request,
-                                                     args=(url, opts.verbose, opts.ssl,))
+                                                     args=(url, proxy, opts.verbose, opts.ssl,))
                     thread_list.append(client_thread)
                     client_thread.start()
                 for _ in thread_list:
                     _.join()
 
                 thread_list = []
-                for url in request_obj.request_result_list:
-                    client_thread = threading.Thread(target=request_obj.single_save_picture, args=(url,))
-                    thread_list.append(client_thread)
-                    client_thread.start()
-                for _ in thread_list:
-                    _.join()
+                if request_obj.request_result_list:
+                    for url in request_obj.request_result_list:
+                        client_thread = threading.Thread(target=request_obj.single_save_picture, args=(url,proxy,))
+                        thread_list.append(client_thread)
+                        client_thread.start()
+                    for _ in thread_list:
+                        _.join()
+                else:
+                    ColorFormatter('Nothing to do').info()
 
                 ColorFormatter('Task Done!').info()
                 sys.exit(0)
 
             if opts.input_file:
+                custom_proxy = opts.proxy
                 with open(str(opts.input_file), 'rb') as r:
                     url_list = r.readlines()
 
@@ -382,7 +572,16 @@ def main():
                 urls = [url.strip().decode('utf8') for url in url_list]
 
                 request_obj = Request()
-                all_task = [executor.submit(request_obj.send_request, url, opts.verbose, opts.ssl)
+
+                if custom_proxy:
+                    result = proxy_result(proxy=custom_proxy, verbose=opts.verbose)
+                    if result:
+                        ColorFormatter('代理使用成功').success()
+                    else:
+                        ColorFormatter('代理使用失败').error()
+                        ColorFormatter('仍然使用本机 ip 发送请求').info()
+                        custom_proxy = None
+                all_task = [executor.submit(request_obj.send_request, url, custom_proxy, opts.verbose, opts.ssl)
                             for url in urls]
                 # 等待所有的线程池中的任务完成
                 wait(all_task, return_when=ALL_COMPLETED)
@@ -442,10 +641,14 @@ class CmdLineParser(ArgumentParser):
 
         # Options module
         options = parser.add_argument_group("Options module", 'set up parameter to control request')
+        options.add_argument('--proxy', dest='proxy', metavar='PROTOCOL://IP:PORT',
+                             help='set proxy to request target url, support proxy type is: http https socks4 socks5, '
+                                  'for example: --proxy socks5://127.0.0.1:1080')
+        options.add_argument('--proxy-test', dest='proxy_test', metavar='PROTOCOL://IP:PORT',
+                             help="test proxy available, for example: --test-proxy socks5://127.0.0.1:1080")
         options.add_argument('-t', '--thread', dest='thread_number', metavar='INT', default=200,
                                help='set up threads of number, default is 200 count')
         options.add_argument('--ssl', action='store_true', help='toggle ssl for request')
-
         options.add_argument("-v", "--verbose", action='store_true', dest="verbose", help="toggle verbose mode")
 
         # Database module
@@ -454,7 +657,8 @@ class CmdLineParser(ArgumentParser):
         database.add_argument("-s", "--show-urls", action='store_true', dest="show_urls",
                               help="show all cached urls in database")
         database.add_argument('--clean', action='store_true', dest='clean_data',
-                              help='clean the database cache, the Geckodriver redundant log file and saved screenshot files')
+                              help='clean the database cache, the Geckodriver redundant log file and saved screenshot'
+                                   ' files')
 
         opts = parser.parse_args()
 
